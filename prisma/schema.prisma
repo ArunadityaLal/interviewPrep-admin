@@ -1,0 +1,317 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                      Int                 @id @default(autoincrement())
+  email                   String              @unique
+  passwordHash            String?             @map("password_hash")
+  role                    UserRole
+  createdAt               DateTime            @default(now()) @map("created_at")
+  updatedAt               DateTime            @updatedAt @map("updated_at")
+  provider                AuthProvider?       @default(EMAIL)
+  googleId                String?             @unique @map("google_id") @db.VarChar(255)
+  emailVerified           Boolean?            @default(false) @map("email_verified")
+  name                    String?             @db.VarChar(255)
+  profilePicture          String?             @map("profile_picture")
+  verificationToken       String?             @map("verification_token")
+  verificationTokenExpiry DateTime?           @map("verification_token_expiry") @db.Timestamp(6)
+  interviewerProfile      InterviewerProfile?
+  studentProfile          StudentProfile?
+
+  @@index([googleId])
+  @@index([verificationToken], map: "idx_users_verification_token")
+  @@map("users")
+}
+
+model StudentProfile {
+  id                             Int                       @id @default(autoincrement())
+  userId                         Int                       @unique @map("user_id")
+  name                           String
+  college                        String?
+  branch                         String?
+  graduationYear                 Int?                      @map("graduation_year")
+  targetRole                     String?                   @map("target_role")
+  experienceLevel                String?                   @map("experience_level")
+  createdAt                      DateTime                  @default(now()) @map("created_at")
+  updatedAt                      DateTime                  @updatedAt @map("updated_at")
+  guidanceLimit                  Int                       @default(5) @map("guidance_limit")
+  guidanceUsed                   Int                       @default(0) @map("guidance_used")
+  interviewsLimit                Int                       @default(5) @map("interviews_limit")
+  interviewsUsed                 Int                       @default(0) @map("interviews_used")
+  planExpiresAt                  DateTime?                 @map("plan_expires_at")
+  planType                       PlanType                  @default(FREE) @map("plan_type")
+  resumeUrl                      String?                   @map("resume_url")
+  preferred_interviewer_unlocked Boolean                   @default(false)
+  manual_booking_requests        manual_booking_requests[]
+  sessions                       Session[]
+  user                           User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptions                  Subscription[]
+  codingSubmissions              CodingSubmission[]
+
+  @@map("student_profiles")
+}
+
+model Subscription {
+  id                Int            @id @default(autoincrement())
+  studentId         Int            @map("student_id")
+  razorpayOrderId   String         @unique @map("razorpay_order_id")
+  razorpayPaymentId String?        @unique @map("razorpay_payment_id")
+  razorpaySignature String?        @map("razorpay_signature")
+  amount            Int
+  currency          String         @default("INR")
+  status            PaymentStatus  @default(PENDING)
+  planType          PlanType       @map("plan_type")
+  validFrom         DateTime?      @map("valid_from")
+  validUntil        DateTime?      @map("valid_until")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  student           StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model InterviewerProfile {
+  id                      Int                       @id @default(autoincrement())
+  userId                  Int                       @unique @map("user_id")
+  name                    String
+  education               String?
+  companies               String[]
+  yearsOfExperience       Int?                      @map("years_of_experience")
+  rolesSupported          String[]                  @map("roles_supported")
+  difficultyLevels        DifficultyLevel[]         @map("difficulty_levels")
+  sessionTypesOffered     SessionType[]             @map("session_types_offered")
+  linkedinUrl             String?                   @map("linkedin_url")
+  status                  InterviewerStatus         @default(PENDING)
+  createdAt               DateTime                  @default(now()) @map("created_at")
+  updatedAt               DateTime                  @updatedAt @map("updated_at")
+  idCardUrl               String?                   @map("id_card_url")
+  interviewTypesOffered   InterviewType[]           @default([]) @map("interview_types_offered")
+  resumeUrl               String?                   @map("resume_url")
+  averageRating           Float?                    @map("average_rating")
+  totalRatings            Int                       @default(0) @map("total_ratings")
+  availabilitySlots       AvailabilitySlot[]
+  feedback                Feedback[]
+  user                    User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  manual_booking_requests manual_booking_requests[]
+  sessions                Session[]
+
+  @@map("interviewer_profiles")
+}
+
+model AvailabilitySlot {
+  id            Int                @id @default(autoincrement())
+  interviewerId Int                @map("interviewer_id")
+  startTime     DateTime           @map("start_time")
+  endTime       DateTime           @map("end_time")
+  isBooked      Boolean            @default(false) @map("is_booked")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  interviewer   InterviewerProfile @relation(fields: [interviewerId], references: [id], onDelete: Cascade)
+
+  @@map("availability_slots")
+}
+
+model Session {
+  id                      Int                      @id @default(autoincrement())
+  studentId               Int                      @map("student_id")
+  interviewerId           Int                      @map("interviewer_id")
+  sessionType             SessionType              @map("session_type")
+  status                  SessionStatus            @default(SCHEDULED)
+  scheduledTime           DateTime                 @map("scheduled_time")
+  durationMinutes         Int                      @map("duration_minutes")
+  topic                   String?
+  role                    String?
+  difficulty              DifficultyLevel?
+  interviewType           InterviewType?           @map("interview_type")
+  createdAt               DateTime                 @default(now()) @map("created_at")
+  updatedAt               DateTime                 @updatedAt @map("updated_at")
+  reminder_sent           Boolean                  @default(false)
+  feedback                Feedback?
+  manual_booking_requests manual_booking_requests?
+  interviewer             InterviewerProfile       @relation(fields: [interviewerId], references: [id], onDelete: Cascade)
+  student                 StudentProfile           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Feedback {
+  id                   Int                   @id @default(autoincrement())
+  sessionId            Int                   @unique @map("session_id")
+  interviewerId        Int                   @map("interviewer_id")
+  summary              String?
+  strengths            String?
+  recommendations      String?
+  actionItems          String?               @map("action_items")
+  technicalDepth       Int?                  @map("technical_depth")
+  problemSolving       Int?                  @map("problem_solving")
+  communication        Int?
+  confidence           Int?
+  overallComments      String?               @map("overall_comments")
+  hiringRecommendation HiringRecommendation? @map("hiring_recommendation")
+  createdAt            DateTime              @default(now()) @map("created_at")
+  studentRating        Int?                  @map("student_rating")
+  studentRatingComment String?               @map("student_rating_comment")
+  interviewer          InterviewerProfile    @relation(fields: [interviewerId], references: [id], onDelete: Cascade)
+  session              Session               @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("feedback")
+}
+
+model PendingUser {
+  id                      Int       @id @default(autoincrement())
+  email                   String    @unique @db.VarChar(255)
+  passwordHash            String    @map("password_hash")
+  role                    String    @db.VarChar(50)
+  verificationToken       String    @map("verification_token") @db.VarChar(10)
+  verificationTokenExpiry DateTime  @map("verification_token_expiry") @db.Timestamp(6)
+  createdAt               DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  expiresAt               DateTime  @map("expires_at") @db.Timestamp(6)
+
+  @@index([email], map: "idx_pending_users_email")
+  @@index([expiresAt], map: "idx_pending_users_expires_at")
+  @@index([verificationToken], map: "idx_pending_users_verification_token")
+  @@map("pending_users")
+}
+
+model manual_booking_requests {
+  id                       Int                 @id @default(autoincrement())
+  student_id               Int
+  preferred_interviewer_id Int?
+  topic                    String?
+  role                     String?
+  difficulty               DifficultyLevel?
+  interview_type           InterviewType?
+  session_type             SessionType
+  status                   ManualBookingStatus @default(PENDING)
+  razorpay_order_id        String?             @unique
+  razorpay_payment_id      String?             @unique
+  razorpay_signature       String?
+  payment_status           PaymentStatus       @default(PENDING)
+  session_id               Int?                @unique
+  notes                    String?
+  created_at               DateTime            @default(now())
+  updated_at               DateTime
+  interviewer_profiles     InterviewerProfile? @relation(fields: [preferred_interviewer_id], references: [id])
+  sessions                 Session?            @relation(fields: [session_id], references: [id])
+  student_profiles         StudentProfile      @relation(fields: [student_id], references: [id], onDelete: Cascade)
+}
+
+model CodingQuestion {
+  id          Int             @id @default(autoincrement())
+  title       String
+  slug        String          @unique
+  description String
+  difficulty  DifficultyLevel
+  category    String
+  tags        String[]
+  constraints String?
+  examples    Json
+  testCases   Json
+  starterCode Json
+  solution    String?
+  hints       String[]
+  isActive    Boolean         @default(true)
+  orderIndex  Int             @default(0)
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  submissions CodingSubmission[]
+
+  @@map("coding_questions")
+}
+
+model CodingSubmission {
+  id          Int              @id @default(autoincrement())
+  studentId   Int              @map("student_id")
+  questionId  Int              @map("question_id")
+  language    String
+  code        String
+  status      SubmissionStatus @default(PENDING)
+  runtime     Int?
+  memory      Int?
+  testsPassed Int              @default(0) @map("tests_passed")
+  totalTests  Int              @default(0) @map("total_tests")
+  errorOutput String?          @map("error_output")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  student  StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  question CodingQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@map("coding_submissions")
+}
+enum SubmissionStatus {
+  PENDING
+  ACCEPTED
+  WRONG_ANSWER
+  TIME_LIMIT_EXCEEDED
+  RUNTIME_ERROR
+  COMPILE_ERROR
+}
+enum UserRole {
+  STUDENT
+  INTERVIEWER
+  ADMIN
+}
+
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+}
+
+enum InterviewerStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SessionType {
+  GUIDANCE
+  INTERVIEW
+}
+
+enum SessionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum DifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum InterviewType {
+  TECHNICAL
+  HR
+  MIXED
+}
+
+enum HiringRecommendation {
+  STRONG_HIRE
+  HIRE
+  WEAK_HIRE
+  NO_HIRE
+}
+
+enum PlanType {
+  FREE
+  PRO
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+enum ManualBookingStatus {
+  PENDING
+  ASSIGNED
+  CANCELLED
+}

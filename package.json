@@ -1,0 +1,33 @@
+{
+  "name": "interviewprep-admin",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "lint": "next lint",
+    "prisma:generate": "prisma generate",
+    "prisma:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.19.0",
+    "bcrypt": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "next": "14.2.35",
+    "next-auth": "^4.24.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^20.11.30",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.35",
+    "prisma": "^5.19.0",
+    "typescript": "^5.4.5"
+  }
+}
