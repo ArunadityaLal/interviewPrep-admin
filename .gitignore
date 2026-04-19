@@ -1,5 +1,6 @@
 .next/
 node_modules/
+.next_cache_bad_1774362395/
 
 .env
 .env.local
